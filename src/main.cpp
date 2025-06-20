@@ -5,6 +5,9 @@
 #include <d3d11.h>
 #include <tchar.h> // Windows-specific generic mapping of something
 #include "main.h"
+#include "alarmwidget.h"
+
+using namespace std;
 
 // Data
 static ID3D11Device             *g_pd3dDevice = nullptr;
@@ -65,6 +68,8 @@ int main()
 
 void MainLoop()
 {
+    unique_ptr<AlarmWidget> wAlarm(new AlarmWidget(420, 420));
+    
     bool done = false;
     while (!done)
     {
@@ -94,6 +99,9 @@ void MainLoop()
 
             ImGui::End();
         }
+
+        // Render Alarm Widget
+        wAlarm->Render();
 
         // Rendering
         ImGui::Render();

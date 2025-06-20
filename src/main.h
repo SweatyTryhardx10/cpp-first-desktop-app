@@ -1,7 +1,7 @@
+#pragma once
+
 #include "imgui.h"
 #include <d3d11.h>
-
-#pragma once
 
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
