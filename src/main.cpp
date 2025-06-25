@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
@@ -10,13 +11,15 @@
 using namespace std;
 
 // Data
-static ID3D11Device             *g_pd3dDevice = nullptr;
-static ID3D11DeviceContext      *g_pd3dDeviceContext = nullptr;
-static ID3D11RenderTargetView   *g_mainRenderTargetView = nullptr;
-static IDXGISwapChain           *g_pSwapChain = nullptr;
-static bool                     g_SwapChainOccluded = false;
+static ID3D11Device *g_pd3dDevice = nullptr;
+static ID3D11DeviceContext *g_pd3dDeviceContext = nullptr;
+static ID3D11RenderTargetView *g_mainRenderTargetView = nullptr;
+static IDXGISwapChain *g_pSwapChain = nullptr;
+static bool g_SwapChainOccluded = false;
 
-static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
+static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
+
+static HWND hwnd;
 
 int main()
 {
@@ -27,9 +30,9 @@ int main()
     // Create application window
     WNDCLASSEXW wc = {sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr};
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Dear ImGui DirectX11 Example", WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * main_scale), (int)(800 * main_scale), nullptr, nullptr, wc.hInstance, nullptr);
+    hwnd = ::CreateWindowW(wc.lpszClassName, L"Dear ImGui DirectX11 Example", WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * main_scale), (int)(800 * main_scale), nullptr, nullptr, wc.hInstance, nullptr);
 
-    // Initialize Direct3D
+    // Initialize Direct3Dk
     if (!CreateDeviceD3D(hwnd))
     {
         CleanupDeviceD3D();
@@ -46,11 +49,27 @@ int main()
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.IniFilename = NULL;  // Disable automatic creation of .ini file for startup window configs (Enable later if desired).
+    io.IniFilename = NULL; // Disable automatic creation of .ini file for startup window configs (Enable later if desired).
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+    if (__cplusplus == 202302L)
+        std::cout << "C++23";
+    else if (__cplusplus == 202002L)
+        std::cout << "C++20";
+    else if (__cplusplus == 201703L)
+        std::cout << "C++17";
+    else if (__cplusplus == 201402L)
+        std::cout << "C++14";
+    else if (__cplusplus == 201103L)
+        std::cout << "C++11";
+    else if (__cplusplus == 199711L)
+        std::cout << "C++98";
+    else
+        std::cout << "pre-standard C++." << __cplusplus;
+    std::cout << "\n";
 
     MainLoop();
 
@@ -58,7 +77,7 @@ int main()
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
-    
+
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
@@ -69,7 +88,7 @@ int main()
 void MainLoop()
 {
     unique_ptr<AlarmWidget> wAlarm(new AlarmWidget(420, 420));
-    
+
     bool done = false;
     while (!done)
     {
@@ -86,6 +105,23 @@ void MainLoop()
         if (done)
             break;
 
+        // Handle window being minimized or screen locked
+        if (g_SwapChainOccluded && g_pSwapChain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED)
+        {
+            ::Sleep(10);
+            continue;
+        }
+        g_SwapChainOccluded = false;
+
+        // Handle window resize (we don't resize directly in the WM_SIZE handler)
+        if (g_ResizeWidth != 0 && g_ResizeHeight != 0)
+        {
+            CleanupRenderTarget();
+            g_pSwapChain->ResizeBuffers(0, g_ResizeWidth, g_ResizeHeight, DXGI_FORMAT_UNKNOWN, 0);
+            g_ResizeWidth = g_ResizeHeight = 0;
+            CreateRenderTarget();
+        }
+
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
@@ -101,6 +137,16 @@ void MainLoop()
         }
 
         // Render Alarm Widget
+        wAlarm->SetPosition(0, 0);
+        RECT wndRect;
+        // TODO: Use client area rectangle from GetWindowInfo (WINDOWINFO) instead.
+        // The reason is that the window size includes the header.
+        if (GetWindowRect(hwnd, &wndRect))
+        {
+            uint32_t wndWidth = wndRect.right - wndRect.left;
+            uint32_t wndHeight = wndRect.bottom - wndRect.top;
+            wAlarm->SetSize(wndWidth, wndHeight);
+        }
         wAlarm->Render();
 
         // Rendering
@@ -138,9 +184,12 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
     UINT createDeviceFlags = 0;
-    //createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+    // createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
     D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
+    const D3D_FEATURE_LEVEL featureLevelArray[2] = {
+        D3D_FEATURE_LEVEL_11_0,
+        D3D_FEATURE_LEVEL_10_0,
+    };
     HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
     if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
         res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
@@ -154,14 +203,26 @@ bool CreateDeviceD3D(HWND hWnd)
 void CleanupDeviceD3D()
 {
     CleanupRenderTarget();
-    if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
-    if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = nullptr; }
-    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
+    if (g_pSwapChain)
+    {
+        g_pSwapChain->Release();
+        g_pSwapChain = nullptr;
+    }
+    if (g_pd3dDeviceContext)
+    {
+        g_pd3dDeviceContext->Release();
+        g_pd3dDeviceContext = nullptr;
+    }
+    if (g_pd3dDevice)
+    {
+        g_pd3dDevice->Release();
+        g_pd3dDevice = nullptr;
+    }
 }
 
 void CreateRenderTarget()
 {
-    ID3D11Texture2D* pBackBuffer;
+    ID3D11Texture2D *pBackBuffer;
     g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
     g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
     pBackBuffer->Release();
@@ -169,7 +230,11 @@ void CreateRenderTarget()
 
 void CleanupRenderTarget()
 {
-    if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
+    if (g_mainRenderTargetView)
+    {
+        g_mainRenderTargetView->Release();
+        g_mainRenderTargetView = nullptr;
+    }
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp
