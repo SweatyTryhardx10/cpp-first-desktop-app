@@ -1,12 +1,12 @@
 #pragma once
 
 #include <iostream>
-#include <tchar.h>
+#include <stdint.h>
 
 class NumberDialWidget
 {
     public:
-        NumberDialWidget(uint8_t width, uint8_t height)
+        NumberDialWidget(uint16_t width, uint16_t height)
         {
             this->width = width;
             this->height = height;
@@ -14,6 +14,6 @@ class NumberDialWidget
         void Render();
         
     private:
-        uint8_t width;
-        uint8_t height;
+        uint16_t width;
+        uint16_t height;
 };

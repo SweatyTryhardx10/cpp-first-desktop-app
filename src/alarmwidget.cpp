@@ -1,11 +1,11 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <stdint.h>
+#include <d3d11.h>
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
-#include <d3d11.h>
-#include <tchar.h> // Windows-specific generic mapping of something
 #include "alarmwidget.h"
 
 void AlarmWidget::Render()
@@ -21,7 +21,7 @@ void AlarmWidget::Render()
     ImGui::PopItemWidth();
 
     ImVec2 btnSize = ImGui::GetContentRegionAvail();
-    // btnSize.y = std::clamp(btnSize.y, 40.0f, 100.0f);
+    btnSize.y = std::clamp(btnSize.y, 40.0f, 100.0f);
     if (!commandIssued && ImGui::Button("Start Timer", btnSize))
     {
         int seconds = (vHour * 3600) + (vMinute * 60);

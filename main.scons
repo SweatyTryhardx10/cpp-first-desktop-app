@@ -1,2 +1,0 @@
-env = Environment(CPPPATH = ['.', './imgui', './imgui/backends'], LIBS = ['d3d11.lib'])
-env.Program('build', [Glob('./src/*.cpp'), Glob('./imgui/*.cpp'), './imgui/backends/imgui_impl_win32.cpp', './imgui/backends/imgui_impl_dx11.cpp'])

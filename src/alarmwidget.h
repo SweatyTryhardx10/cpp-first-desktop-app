@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include <tchar.h>
+#include <stdint.h>
 
 class AlarmWidget
 {
